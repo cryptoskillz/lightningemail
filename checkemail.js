@@ -15,6 +15,7 @@ AWS.config.region = "eu-west-1";
 var sqs = new AWS.SQS({apiVersion: '2012-11-05'});
 var s3 = new AWS.S3();
 
+//this function gets a message.  Note it is set to deal with one message at a time. 
 var sqsGetMessage = function() {
     return new Promise(function(resolve, reject) {
         var params = {
@@ -186,7 +187,9 @@ var getCharge = function(toemail) {
 }
 
 
-sqsGetMessage().then(() => {
+function checkemail()
+{
+  sqsGetMessage().then(() => {
   s3GetObject(keyid).then(emailbuffer => {
     processEmail(emailbuffer).then(toemail => {
       getCharge(toemail).then(lightaddress => {
@@ -246,6 +249,13 @@ sqsGetMessage().then(() => {
           
         }
       });
+     });
     });
   });
-});
+}
+
+console.log('Pay per read email script:')
+console.log('Checking for new emails');
+checkemail();
+intervalid = setInterval(checkemail, 50000);
+
