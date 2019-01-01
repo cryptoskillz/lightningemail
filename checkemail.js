@@ -16,6 +16,7 @@ var sqs = new AWS.SQS({apiVersion: '2012-11-05'});
 var s3 = new AWS.S3();
 
 //this function gets a message.  Note it is set to deal with one message at a time. 
+//it also deletes the message
 var sqsGetMessage = function() {
     return new Promise(function(resolve, reject) {
         var params = {
@@ -89,6 +90,7 @@ var sqsGetMessage = function() {
 
 
 
+//this function gets the object and returns the contents
 var s3GetObject = function(keyid) {
     return new Promise(function(resolve, reject) {
         //console.log(';g;;'+keyid)
@@ -116,6 +118,7 @@ var s3GetObject = function(keyid) {
     })
 }
 
+//this functon gets the to email from the user
 var processEmail = function(emailbuffer) {
     return new Promise(function(resolve, reject) {
         //get the body 
@@ -130,13 +133,31 @@ var processEmail = function(emailbuffer) {
         {
           if (error) resolve('');
           else
+          {
+            /*
+            note you could use a env var to only deal with a certain email
+            example
+
+            if (email.from.email == process.env.CHECKEMAIL)
+            {
+              resolve(email.from.email)
+            }
+            else
+            {
+              resolve('')
+            }
+            */
             resolve(email.from.email)
+          }
 
         });
         //resolve(result);
     })
 }
 
+/*
+this function calls strike and gets a change and renames the name of the object on the s3 vcket to the charge id
+*/
 var getCharge = function(toemail) {
   return new Promise(function(resolve, reject) {
     if (toemail == '')
@@ -186,30 +207,32 @@ var getCharge = function(toemail) {
   })
 }
 
-
+//this is the timer functon
 function checkemail()
 {
   sqsGetMessage().then(() => {
-  s3GetObject(keyid).then(emailbuffer => {
-    processEmail(emailbuffer).then(toemail => {
-      getCharge(toemail).then(lightaddress => {
-        if (keyid == '')
-        {
-          console.log('no message');
-        }
-        else
-        {
-          //finish up send email
-          //console.log(keyid);
-          //console.log(lightaddress);
-          //console.log(toemail)
-          //note : you could check for only certain emails such as support@ to send payment requests to.
-          var params = {
+    s3GetObject(keyid).then(emailbuffer => {
+      processEmail(emailbuffer).then(toemail => {
+        getCharge(toemail).then(lightaddress => {
+          //check if we got a key for sqsget message function
+          if (keyid == '')
+          {
+            console.log('no message');
+          }
+          else
+          {
+            //debug
+            //console.log(keyid);
+            //console.log(lightaddress);
+            //console.log(toemail)
+
+            //build the email
+            var params = {
               Destination: { /* required */
-                ToAddresses: [
-                  toemail,
-                  /* more items */
-                ]
+              ToAddresses: [
+                toemail,
+                /* more items */
+              ]
               },
               Message: { /* required */
                 Body: { /* required */
@@ -227,29 +250,26 @@ function checkemail()
                   Data: 'Pay Cryptoskillz using Lighting'
                  }
                 },
-              Source: process.env.RESPONDEMAIL, /* required */
-              ReplyToAddresses: [
+                Source: process.env.RESPONDEMAIL, /* required */
+                ReplyToAddresses: [
                   process.env.RESPONDEMAIL,
                 /* more items */
-              ],
-            };  
-            //console.log(params);  
-             
-          // Create the promise and SES service object
-          var sendPromise = new AWS.SES({apiVersion: '2010-12-01'}).sendEmail(params).promise();
-          // Handle promise's fulfilled/rejected states
-          sendPromise.then(
-          function(data) {
-            //console.log(data);
-          }).catch(
-            function(err) {
-            console.error(err, err.stack);
-          }); 
-          
-          
-        }
+                ],
+              };  
+               
+              // Create the promise and SES service object
+              var sendPromise = new AWS.SES({apiVersion: '2010-12-01'}).sendEmail(params).promise();
+              // Handle promise's fulfilled/rejected states
+              sendPromise.then(
+              function(data) {
+                //console.log(data);
+              }).catch(
+                function(err) {
+                console.error(err, err.stack);
+              }); 
+          }
+        });
       });
-     });
     });
   });
 }
