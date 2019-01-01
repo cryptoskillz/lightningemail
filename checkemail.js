@@ -256,6 +256,8 @@ function checkemail()
 
 console.log('Pay per read email script:')
 console.log('Checking for new emails');
+//call the function
 checkemail();
-intervalid = setInterval(checkemail, 50000);
+//set it to check every minute
+intervalid = setInterval(checkemail, 60000);
 
